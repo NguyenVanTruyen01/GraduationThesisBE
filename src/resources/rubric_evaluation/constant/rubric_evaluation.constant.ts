@@ -1,0 +1,14 @@
+export const RUBRIC_EVALUTION = {
+    ERROR: {
+        EXISTED: "REGISTRATION_PERIOD_EXISTED",
+        CREATED_FAIL: "CREATED_FAIL",
+        NOT_FOUND: "NOT_FOUND",
+        UPDATE_FAIL: "UPDATE_FAIL",
+        DELETE_FAIL: "DELETE_FAIL",
+        ACTION_FORBIDDEN: "ACTION_FORBIDDEN",
+        REGISTERED_FAIL: "REGISTERED_FAIL",
+        SERVER_ERROR: "SERVER_ERROR", // Lỗi hệ thống
+        BAD_REQUEST: "BAD_REQUEST",
+        MISSING_DATA: "MISSING_DATA" // input không hợp lệ
+    }
+};

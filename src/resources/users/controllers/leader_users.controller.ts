@@ -1,0 +1,217 @@
+import {
+    Controller,
+    Get,
+    Post,
+    Body,
+    Patch,
+    Param,
+    Delete,
+    Query,
+    Req,
+    UploadedFile,
+    UseInterceptors, BadRequestException, HttpException, HttpStatus
+} from '@nestjs/common';
+import { UsersService } from '../users.service';
+import { CreateUserDto } from '../dto/create-user.dto';
+import { UpdateUserDto } from '../dto/update-user.dto';
+import { Request } from "express";
+import { FileInterceptor } from '@nestjs/platform-express';
+import { storageConfig } from "../../../helpers/config";
+import { ValidateUtils } from "../../../utils/validate.utils";
+import { extname } from "path";
+import { USER_CONSTANTS } from '../constant/users.constant';
+
+@Controller('users/leader')
+export class LeaderUsersController {
+    constructor(
+        private readonly usersService: UsersService,
+        private readonly validateUtils: ValidateUtils
+    ) {
+    }
+
+    @Get('findAll')
+    async findAll() {
+        return await this.usersService.findAll();
+    }
+
+    @Post('search')
+    async getUsersByRole(@Body() user_role: any) {
+        return await this.usersService.getUsersByRole(user_role);
+    }
+
+    @Post('getTeacherToReviewTopics')
+    async getTeacherToReviewTopics(@Req() req: Request) {
+        return await this.usersService.getTeacherToReviewTopics(req);
+    }
+
+    @Get('multipleSearch')
+    async multipleSearch(@Query() query_input: any) {
+        return await this.usersService.multipleSearch(query_input);
+    }
+
+    @Patch('updateProfileInformation')
+    async updateProfileInformation(
+        @Req() req: Request,
+        @Body() updateUserDto: UpdateUserDto
+    ) {
+        try {
+            return await this.usersService.updateProfileInformation(req, updateUserDto);
+        } catch (err) {
+
+            if (Object.keys(err.keyValue).includes('email')) {
+                throw new HttpException({
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    message: "Email đã được sử dụng!",
+                    error: USER_CONSTANTS.ERROR.DUPLICATE_EMAIL
+                }, HttpStatus.BAD_REQUEST)
+            }
+            else if (Object.keys(err.keyValue).includes('user_id')) {
+                throw new HttpException({
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    message: "Mã người dùng đã được sử dụng!",
+                    error: USER_CONSTANTS.ERROR.DUPLICATE_EMAIL
+                }, HttpStatus.BAD_REQUEST)
+            }
+            else if (Object.keys(err.keyValue).includes('user_CCCD')) {
+                throw new HttpException({
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    message: "CCCD đã được sử dụng!",
+                    error: USER_CONSTANTS.ERROR.DUPLICATE_CCCD
+                }, HttpStatus.BAD_REQUEST)
+            }
+            else {
+                throw new HttpException({
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    message: "Cập nhật thất bại!",
+                    error: USER_CONSTANTS.ERROR.UPDATE_FAIL
+                }, HttpStatus.BAD_REQUEST)
+            }
+
+        }
+
+    }
+
+    @Get('findById/:id')
+    async findOne(@Param('id') id: string) {
+        return await this.usersService.findOne(id);
+    }
+
+    @Patch('updateById/:id')
+    async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+        try {
+            return await this.usersService.update(id, updateUserDto);
+        } catch (err) {
+
+            if (Object.keys(err.keyValue).includes('email')) {
+                throw new HttpException({
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    message: "Email đã được sử dụng!",
+                    error: USER_CONSTANTS.ERROR.DUPLICATE_EMAIL
+                }, HttpStatus.BAD_REQUEST)
+            }
+            else if (Object.keys(err.keyValue).includes('user_id')) {
+                throw new HttpException({
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    message: "Mã người dùng đã được sử dụng!",
+                    error: USER_CONSTANTS.ERROR.DUPLICATE_EMAIL
+                }, HttpStatus.BAD_REQUEST)
+            }
+            else if (Object.keys(err.keyValue).includes('user_CCCD')) {
+                throw new HttpException({
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    message: "CCCD đã được sử dụng!",
+                    error: USER_CONSTANTS.ERROR.DUPLICATE_CCCD
+                }, HttpStatus.BAD_REQUEST)
+            }
+            else {
+                throw new HttpException({
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    message: "Cập nhật thất bại!",
+                    error: USER_CONSTANTS.ERROR.UPDATE_FAIL
+                }, HttpStatus.BAD_REQUEST)
+            }
+
+        }
+    }
+
+    @Delete('deleteById/:id')
+    async remove(@Param('id') id: string) {
+        return await this.usersService.remove(id);
+    }
+
+    @Post('updateAvatar')
+    @UseInterceptors(FileInterceptor(
+        'avatar',
+        {
+            storage: storageConfig('avatar'),
+            fileFilter: (req, file, callback) => {
+                const ext = extname(file.originalname);
+                const allowExtArr = ['.jpg', '.png', 'jpeg'];
+                if (!allowExtArr.includes(ext)) {
+                    req.fileValidationError = `Phần mở rộng của ảnh sai. Chỉ chấp nhận file ${allowExtArr.toString()}`
+                    callback(null, false)
+                } else {
+                    const fileSize = parseInt(req.headers['content-length']);
+                    if (fileSize > 1024 * 1024 * 5) { // Lớn hơn 5Mbs
+                        req.fileValidationError = `Kích thước file quá lớn. Chỉ chấp nhận file có kích thước nhỏ hơn 5Mbs `
+                        callback(null, false)
+                    } else {
+                        callback(null, true)
+                    }
+                }
+            }
+        }
+    ))
+    async updateAvatar(
+        @Req() req: any,
+        @UploadedFile() file: Express.Multer.File
+    ) {
+
+        if (req.fileValidationError) {
+            throw new BadRequestException(req.fileValidationError)
+        }
+        if (!file) {
+            throw new BadRequestException(`Vui lòng chọn file ảnh để cập nhật!`)
+        }
+
+        let avatarUrl: string = file.fieldname + '/' + file.filename;
+        return await this.usersService.updateAvatar(req, avatarUrl);
+    }
+
+    @Post('insertUserByExcel')
+    @UseInterceptors(FileInterceptor('insert_user',
+        {
+            storage: storageConfig('insert_user'),
+            fileFilter: (req, file, callback) => {
+                const ext = extname(file.originalname);
+                const allowExtArr = ['.xlsx'];
+                if (!allowExtArr.includes(ext)) {
+                    req.fileValidationError = `Định dạng file không chính xác. Chỉ chấp nhận file ${allowExtArr.toString()}`
+                    callback(null, false)
+                } else {
+                    callback(null, true)
+                }
+
+            }
+        }
+    ))
+
+    async leaderInsertUserByExcel(@Req() req: any,
+        @UploadedFile() file: Express.Multer.File
+    ) {
+
+        if (req.fileValidationError) {
+            throw new BadRequestException(req.fileValidationError)
+        }
+
+        if (!file) {
+            throw new BadRequestException("Vui lòng chọn tập tin để tải lên!")
+        }
+
+        let fileUrl: string = file.fieldname + '/' + file.filename;
+
+        return await this.usersService.leaderInsertUserByExcel(req, fileUrl);
+    }
+
+
+}
